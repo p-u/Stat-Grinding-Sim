@@ -1,0 +1,1423 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link
+  href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Lexend+Deca:wght@100..900&family=Outfit:wght@100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap"
+  rel="stylesheet">
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8">
+  <title>Stat Grinding Incremental</title>
+
+  <style>
+    body {
+      font-family: 'Lexend Deca';
+      background: #000000;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+    }
+
+    .title {
+      font-size: 2.5em;
+      margin: 30px 0;
+      text-align: center;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      background: transparent;
+      color: rgb(191, 255, 0);
+      border: 3px solid white;
+      padding: 10px 25px;
+      border-radius: 15px;
+      font-size: 1.5em;
+    }
+
+    .tab:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .tab.active {
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+
+    .content {
+      display: none;
+      padding: 20px;
+      max-width: 800px;
+    }
+
+    .content.active {
+      display: block;
+    }
+
+    #fragmentsContent {
+      max-width: none;
+      width: 100%;
+    }
+
+    .stat-line {
+      font-size: 1.8em;
+      margin: 20px 0;
+      line-height: 1.6;
+    }
+
+    .cash-line {
+      color: #22c55e;
+    }
+
+    .multiplier-line {
+      color: #ef4444;
+    }
+
+    .rebirth-line {
+      color: #3b82f6;
+    }
+
+    .ultra-line {
+      color: #bf00ff;
+    }
+
+    .super-line {
+      color: #15803d;
+    }
+
+    .tier-btn {
+      background: #c7c9c8;
+      color: white;
+      border: 2px solid #60a5fa;
+      padding: 12px 30px;
+      font-size: 1.3em;
+      margin-top: 30px;
+      cursor: pointer;
+    }
+
+    .tier-btn:hover {
+      background: #c6c6c6;
+      transform: translateY(-2px);
+    }
+
+    .tier-btn:disabled {
+      background: #444;
+      border-color: #666;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      border: 2px solid #4ade80;
+      padding: 12px 30px;
+      font-size: 1.3em;
+      margin: 10px 5px;
+      transition: all 0.25s ease;
+    }
+
+    .save-btn:hover {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+      transform: translateY(-2px);
+    }
+
+    textarea {
+      width: 100%;
+      max-width: 400px;
+      padding: 10px;
+      font-size: 1em;
+      background: #000;
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      margin: 10px 0;
+    }
+
+    textarea::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    #tierContent {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .tier-info-header {
+      text-align: center;
+      font-size: 1.3em;
+      margin-bottom: 30px;
+      opacity: 0.85;
+    }
+
+    .tier-compare-container {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      gap: 30px;
+      width: 100%;
+    }
+
+    .tier-card {
+      background: #0a0a0a;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      width: 300px;
+      min-height: 300px;
+      padding: 20px;
+      box-sizing: border-box;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .tier-card:hover {
+      transform: translateY(-4px);
+      border-color: #60a5fa;
+    }
+
+    .tier-card-header {
+      text-align: center;
+      font-size: 1.7em;
+      margin-bottom: 15px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 8px;
+    }
+
+    .benefit-line {
+      font-size: 1.15em;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .benefit-green {
+      color: #22c55e;
+    }
+
+    .benefit-red {
+      color: #ef4444;
+    }
+
+    .benefit-blue {
+      color: #3b82f6;
+    }
+
+    .benefit-yellow {
+      color: #f59e0b;
+    }
+
+    .benefit-purple {
+      color: #bf00ff;
+    }
+
+    .new-tag {
+      color: white;
+      font-size: 0.7em;
+    }
+
+    .tier-arrow {
+      align-self: center;
+      font-size: 3em;
+      opacity: 0.6;
+    }
+
+    #optionsContent {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      text-align: center;
+    }
+
+    #optionsContent button {
+      min-width: 180px;
+    }
+
+    #hardResetBtn {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      border-color: #ef4444;
+    }
+
+    #hardResetBtn:hover {
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+    }
+
+    .energy-header {
+      text-align: center;
+      font-size: 2em;
+      margin-bottom: 30px;
+      color: #facc15;
+      font-family: 'Lexend Deca', sans-serif;
+    }
+
+    .fragment-header {
+      text-align: center;
+      font-size: 3em;
+      margin-bottom: 20px;
+      color: #a855f7;
+      font-family: 'Lexend Deca', sans-serif;
+    }
+
+    .energy-upgrades {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+      padding: 0px;
+    }
+
+    .upgrade-btn {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .upgrade-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .upgrade-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .upgrade-btn.bought {
+      border: 1px solid #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+      opacity: 0.8;
+    }
+
+    .upg-title {
+      font-weight: bold;
+      color: #facc15;
+      margin-bottom: 4px;
+    }
+
+    .upg-cost {
+      font-size: 0.9em;
+      color: #9ca3af;
+      margin-bottom: 2px;
+    }
+
+    .upg-desc {
+      font-size: 0.85em;
+      color: #e5e7eb;
+      margin-bottom: 4px;
+    }
+
+    .upg-total {
+      font-size: 0.85em;
+      color: #1eff00;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 20px;
+      background-color: #333;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 15px;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background-color: #facc15;
+      width: 0%;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+      transition: width 0.1s linear;
+    }
+
+    .progress-text {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      top: 0;
+      left: 0;
+      line-height: 20px;
+      font-size: 0.8em;
+      color: white;
+      text-shadow: 0 0 2px black;
+    }
+
+    .energy-info {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 20px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 500px;
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      margin: 0 auto 30px auto;
+    }
+
+    .energy-info div {
+      font-size: 1.2em;
+      margin: 10px 0;
+      text-align: center;
+    }
+
+    .benefit-yellow {
+      color: #facc15;
+    }
+
+    .fragments-layout {
+      display: flex;
+      gap: 20px;
+      width: 98vw;
+      max-width: 2500px;
+      margin: 0 auto;
+      height: 800px;
+    }
+
+    .runes-section {
+      background: #b3eef6;
+      color: #000;
+      border: 6px solid #34ccff;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      overflow: hidden;
+    }
+
+    .runes-header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .runes-header h2 {
+      font-size: 2em;
+      font-weight: bold;
+    }
+
+    .runes-header .rune-subtitle {
+      color: #000;
+      font-size: 1.3em;
+      font-weight: normal;
+      font-family: sans-serif;
+      margin-top: 5px;
+    }
+
+    .rune-opening-container {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.3);
+      border-radius: 5px;
+      padding: 15px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .hold-btn {
+      background: #111;
+      color: #2dd4bf;
+      border: 1px solid #2dd4bf;
+      padding: 12px 25px;
+      font-size: 1.2em;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s;
+      font-family: 'Lexend Deca', sans-serif;
+    }
+
+    .hold-btn:hover {
+      background: #1a1a1a;
+      box-shadow: 0 0 15px rgba(45, 212, 191, 0.2);
+    }
+
+    .hold-btn:active {
+      transform: scale(0.98);
+    }
+
+    .hold-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: rgba(45, 212, 191, 0.4);
+      width: 0%;
+      pointer-events: none;
+    }
+
+    .rune-list {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    .rune-item {
+      border: 1px solid #000;
+      margin-bottom: 10px;
+      padding: 12px;  
+      border-radius: 5px;
+      font-family: sans-serif;
+    }
+
+    .rune-item.common {
+      background: #F0F0F0;
+    }
+
+    .rune-item.uncommon {
+      background: #66da66;
+    }
+
+    .rune-item.rare {
+      background: #4cb4d6;
+    }
+
+    .rune-item.epic {
+      background: #dc6fdc;
+    }
+
+    .rune-item.legendary {
+      background: #ffd997;
+    }
+
+    .rune-item.mythical {
+      background: #ff93a3;
+    }
+
+    .rune-item.secret {
+      background: #2F2F2F;
+      color: #fff;
+    }
+
+    .rune-item.secret .rune-rarity,
+    .rune-item.secret .rune-name,
+    .rune-item.secret .rune-chance,
+    .rune-item.secret .rune-owned,
+    .rune-item.secret .rune-effect {
+      color: #fff;
+    }
+
+    .rune-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .rune-rarity {
+      font-size: 1em;
+      color: #696969;
+      font-weight: normal;
+      margin-right: 8px;
+    }
+
+    .rune-item.uncommon .rune-rarity {
+      color: #006400;
+    }
+
+    .rune-item.rare .rune-rarity {
+      color: #0000FF;
+    }
+
+    .rune-item.epic .rune-rarity {
+      color: #800080;
+    }
+
+    .rune-item.legendary .rune-rarity {
+      color: #FFA500;
+    }
+
+    .rune-item.mythical .rune-rarity {
+      color: #DC143C;
+    }
+
+    .rune-item.secret .rune-rarity {
+      color: #fff;
+    }
+
+    .rune-name {
+      font-size: 1em;
+      font-weight: bold;
+      color: #000;
+      margin-left: 8px;
+    }
+
+    .rune-chance {
+      font-size: 1em;
+      color: #000;
+    }
+
+    .rune-item-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .rune-owned {
+      font-size: 0.85em;
+      font-weight: bold;
+      color: #000;
+    }
+
+    .rune-effect {
+      font-size: 1em;
+      line-height: 1.3;
+      color: #000;
+    }
+
+    .rune-effect .effect-cash {
+      color: #008000;
+    }
+
+    .rune-effect .effect-multiplier {
+      color: #FF0000;
+    }
+
+    .rune-effect .effect-fragments {
+      color: #800080;
+    }
+
+    .rune-effect .effect-rebirth {
+      color: #3b82f6;
+    }
+
+    .rune-effect .effect-ultra {
+      color: #bf00ff;
+    }
+
+    .rune-effect .effect-energy {
+      color: #facc15;
+    }
+
+    .rune-effect .effect-super {
+      color: #15803d;
+    }
+
+    .rune-effect .effect-all-stats {
+      background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: bold;
+    }
+
+    .index-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #333;
+      padding-bottom: 10px;
+    }
+
+    .index-tab-btn {
+      background: none;
+      border: none;
+      color: #666;
+      padding: 5px 15px;
+      font-size: 1.1em;
+      cursor: pointer;
+      font-family: 'Lexend Deca', sans-serif;
+      transition: color 0.2s;
+    }
+
+    .index-tab-btn.active {
+      color: white;
+      font-weight: bold;
+      position: relative;
+    }
+
+    .index-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -12px;
+      width: 100%;
+      height: 2px;
+      background: #6366f1;
+    }
+
+    .canvas-section {
+      flex-grow: 1;
+      background: #111;
+      border: 2px solid #333;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    .index-container {
+      display: flex;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      background: #0a0a0a;
+      min-height: 400px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .index-sidebar {
+      width: 250px;
+      background: rgba(255, 255, 255, 0.05);
+      border-right: 2px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .index-header {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .index-item {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      padding: 15px 20px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 1.1em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .index-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .index-item.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border-left: 4px solid #fff;
+    }
+
+    .index-item[data-stat="tier"] {
+      color: #C0C0C0;
+    }
+
+    .rune-index-item {
+      color: #2dd4bf;
+    }
+
+    /* Details */
+    .index-details {
+      flex: 1;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .detail-title {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: white;
+    }
+
+    .detail-id {
+      color: rgba(255, 255, 255, 0.4);
+      font-family: monospace;
+      font-size: 1em;
+      margin-top: -15px;
+    }
+
+    .detail-label {
+      font-size: 1.2em;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 5px;
+    }
+
+    .detail-text {
+      font-size: 1.1em;
+      line-height: 1.5;
+    }
+
+    .detail-boosts {
+      font-size: 1.2em;
+    }
+
+    /* Achievement Cards */
+    .achievement-card {
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-radius: 6px;
+      padding: 10px 8px;
+      text-align: center;
+      transition: all 0.3s ease;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      cursor: help;
+    }
+
+    .achievement-card.unlocked {
+      background: linear-gradient(135deg, #1a4d2e, #1a3a2e);
+      border-color: #4ade80;
+      box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+    }
+
+    .ach-name {
+      font-size: 0.9em;
+      font-weight: bold;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .ach-req {
+      color: #aaa;
+      font-size: 0.75em;
+      line-height: 1.2;
+    }
+
+    /* Custom Tooltip */
+    .achievement-card::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      color: #4ade80;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      border: 1px solid #4ade80;
+      z-index: 1000;
+    }
+
+    .achievement-card:hover::after {
+      opacity: 1;
+    }
+
+    .achievement-card {
+      position: relative;
+    }
+
+    .daily-reward-card {
+      background: #0a0a0a;
+      border: 2px solid #6366f1;
+      border-radius: 12px;
+      padding: 30px;
+      font-family: 'Lexend Deca', sans-serif;
+      max-width: 400px;
+      margin: 0 auto;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+    }
+
+    .reward-title {
+      font-size: 2em;
+      color: #6366f1;
+      font-family: 'Lexend Deca', sans-serif;
+      margin-bottom: 20px;
+    }
+
+    .streak-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 25px;
+      font-family: 'Lexend Deca', sans-serif;
+      font-size: 1.1em;
+    }
+
+    .reward-timer-box {
+      background: #111;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-family: 'Lexend Deca', sans-serif;
+      border: 1px solid #333;
+    }
+
+    .reward-amount-box {
+      font-size: 1.3em;
+      font-family: 'Lexend Deca', sans-serif;
+      margin-bottom: 25px;
+    }
+
+    .claim-btn {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 1.4em;
+      font-family: 'Lexend Deca', sans-serif;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .claim-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+    }
+
+    .claim-btn:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .artist {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 16px;
+    }
+
+    .license {
+      color: #b0b0c8;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .links a {
+      color: #7aa2ff;
+      text-decoration: none;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+
+    .footer {
+      margin-top: 50px;
+      font-size: 13px;
+      color: #8a8aa5;
+      text-align: center;
+      border-top: 1px solid #2a2a3a;
+      padding-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1 class="title">Stat Grinding Incremental</h1>
+
+  <div class="tabs">
+    <button class="tab active" id="statsTab">Stats</button>
+    <button class="tab" id="tierTab">Tier Up</button>
+    <button class="tab" id="energyTab" style="display: none;">Energy</button>
+    <button class="tab" id="fragmentsTab" style="display: none;">Fragments</button>
+    <button class="tab" id="achievementsTab">Achievements</button>
+    <button class="tab" id="tokensTab">Tokens</button>
+    <button class="tab" id="indexTab">Stat Info</button>
+    <button class="tab" id="optionsTab">Options</button>
+  </div>
+
+  <!-- STATS -->
+  <div class="content active" id="statsContent">
+    <div class="stat-line cash-line" id="cashDisplay">Cash: 0 (+0/sec)</div>
+    <div class="stat-line multiplier-line" id="multiplierDisplay">Multiplier: 1 (+1/reset) (next at 100)</div>
+    <div class="stat-line rebirth-line" id="rebirthDisplay">Rebirth: 0 (next at 75)</div>
+    <div class="stat-line ultra-line" id="ultraDisplay">Ultra: 0 (next at 10)</div>
+    <div class="stat-line super-line" id="superDisplay" style="display:none;">Super: 0 (next at 20 Ultra)</div>
+  </div>
+
+  <!-- TIER UP -->
+  <div class="content" id="tierContent">
+    <div class="tier-info-header">
+      You are currently tier <span id="tierDisplay">0</span>
+    </div>
+
+    <div class="tier-compare-container">
+      <div class="tier-card">
+        <div class="tier-card-header" id="currentTierName">Tier 0</div>
+        <div id="currentTierBenefits"></div>
+      </div>
+
+      <div class="tier-arrow">→</div>
+
+      <div class="tier-card">
+        <div class="tier-card-header" id="nextTierName">Tier 1</div>
+        <div id="nextTierBenefits"></div>
+      </div>
+    </div>
+
+    <button class="tier-btn" id="tierUpBtn" style="margin: 20px auto; display: block;">
+      Tier Up (<span id="tierReq">Cost: 10 Multiplier</span>)
+    </button>
+    <div class="tier-info-header">Tiering up resets all stats<span id="tierUpReset"></span></div>
+  </div>
+
+  <!-- ENERGY -->
+  <div class="content" id="energyContent">
+    <div class="energy-header">Energy: <span id="energyDisplay">0</span> (+<span id="energyPerSec">0</span>/ 15 secs)
+    </div>
+
+    <div style="font-size: 1.2em; color: #888; margin-bottom: 20px; text-align: center;">
+      Generates based on Cash and Ultra
+    </div>
+
+    <div id="energyProgressContainer" class="progress-bar-container"
+      style="max-width: 700px; margin: 0 auto 20px auto;">
+      <div id="energyProgressBar" class="progress-bar-fill"></div>
+      <div id="energyTimerText" class="progress-text">0.0s / 15.0s</div>
+    </div>
+
+    <div class="energy-info">
+      <div id="energyCashBoost" class="benefit-green">Cash Multiplier: x1.00</div>
+      <div id="energyMultBoost" class="benefit-red">Multiplier Multiplier: x1.00</div>
+      <div id="energyRebirthBoost" class="benefit-blue">Rebirth Multiplier: x1.00</div>
+    </div>
+
+    <div class="energy-upgrades">
+      <button class="upgrade-btn" id="eUp1" onclick="game.buyEnergyUpgrade(0)">
+        <div class="upg-title">Upgrade 1: Energy Overclock</div>
+        <div class="upg-cost">4,000 Energy</div>
+        <div class="upg-desc">x1.5 Energy Production</div>
+      </button>
+      <button class="upgrade-btn" id="eUp2" onclick="game.buyEnergyUpgrade(1)">
+        <div class="upg-title">Upgrade 2: Rebirth Boost</div>
+        <div class="upg-cost">10,000 Energy</div>
+        <div class="upg-desc">x1.25 Rebirth Gain</div>
+      </button>
+      <button class="upgrade-btn" id="eUp3" onclick="game.buyEnergyUpgrade(2)">
+        <div class="upg-title">Upgrade 3: Ultra Up!</div>
+        <div class="upg-cost">25,000 Energy</div>
+        <div class="upg-desc">x1.25 Ultra & Cash Gain</div>
+      </button>
+      <button class="upgrade-btn" id="eUp4" onclick="game.buyEnergyUpgrade(3)">
+        <div class="upg-title">Upgrade 4: Supercharger</div>
+        <div class="upg-cost">Cost: 50,000 Energy</div>
+        <div class="upg-desc">x2.5 Energy Production</div>
+      </button>
+
+      <button class="upgrade-btn" id="eUp5" onclick="game.buyEnergyUpgrade(4)">
+        <div class="upg-title">Upgrade 5: Cost Efficiency I</div>
+        <div class="upg-cost">Cost: 150,000 Energy</div>
+        <div class="upg-desc">-30% Rebirth Cost</div>
+      </button>
+
+      <button class="upgrade-btn" id="eUp6" onclick="game.buyEnergyUpgrade(5)">
+        <div class="upg-title">Upgrade 6: Cost Efficiency II</div>
+        <div class="upg-cost">Cost: 400,000 Energy</div>
+        <div class="upg-desc">-12.5% Ultra Cost</div>
+      </button>
+
+      <button class="upgrade-btn" id="eUp7" onclick="game.buyEnergyUpgrade(6)">
+        <div class="upg-title">Upgrade 7: Energy Boost III</div>
+        <div class="upg-cost">Cost: 750,000 Energy</div>
+        <div class="upg-desc">x1.75 Energy Production</div>
+      </button>
+
+      <button class="upgrade-btn" id="eUp8" onclick="game.buyEnergyUpgrade(7)">
+        <div class="upg-title">Upgrade 8: Dual-Cost Decrease</div>
+        <div class="upg-cost">Cost: 2,500,000 Energy</div>
+        <div class="upg-desc">Reduce the price of Ultra and Super by 10%</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- FRAGMENTS -->
+  <div class="content" id="fragmentsContent">
+    <div style="text-align: center; margin-bottom: 10px;">
+      <div class="fragment-header">Fragments: <span id="fragmentDisplay">0</span>
+      </div>
+      <div style="color: #ccc; font-size: 1.2em; margin-top: 10px; margin-bottom: 20px;">Hover over shards to collect
+        them!</div>
+
+      <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
+        <button class="upgrade-btn" id="fragmentUpgradeBtn" onclick="game.buyFragmentUpgrade(0)">
+          <div class="upg-title">Energy Boost</div>
+          <div class="upg-cost">Cost: 75 Fragments</div>
+          <div class="upg-desc">x1.1 Energy Production (0/25)</div>
+          <div class="upg-total">Currently: x1.00</div>
+        </button>
+
+        <button class="upgrade-btn" id="fragmentUpgradeBtn2" onclick="game.buyFragmentUpgrade(1)">
+          <div class="upg-title">Bigger and Better</div>
+          <div class="upg-cost">Cost: 200 Fragments</div>
+          <div class="upg-desc">+0.5s duration, x1.5 Fragments (0/15)</div>
+          <div id="fragmentUpgrade2Total" class="upg-total">Currently: x1.00</div>
+        </button>
+
+        <button class="upgrade-btn" id="fragmentUpgradeBtn3" onclick="game.buyFragmentUpgrade(2)">
+          <div class="upg-title">Super Fragment</div>
+          <div class="upg-cost">Cost: 25,000 Fragments</div>
+          <div class="upg-desc">Triple Fragments gain (0/2)</div>
+          <div id="fragmentUpgrade3Total" class="upg-total">Currently: x1.00</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="fragments-layout">
+      <!-- Runes Section (Tier 7+) -->
+      <div class="runes-section" id="runesContainer" style="display: none;">
+        <div class="runes-header">
+          <h2>Fragment Rune</h2>
+          <div class="rune-subtitle">Costs 5,000 Fragments</div>
+        </div>
+
+        <div class="rune-opening-container">
+          <button class="hold-btn" id="openRuneBtn">
+            Hold to Open
+            <div class="hold-progress" id="holdProgress"></div>
+          </button>
+        </div>
+
+        <div class="rune-list" id="runeList">
+        </div>
+      </div>
+
+      <!-- Fragment Spawn Zone -->
+      <div id="canvasContainer" class="canvas-section">
+        <div
+          style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); color: #666; pointer-events: none; text-align: center;">
+          Fragment Spawn Zone
+        </div>
+        <canvas id="fragmentCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="content" id="tokensContent">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h3
+        style="color: #6366f1; font-size: 2.5em; margin-top: 0; margin-bottom: 10px; font-family: 'Lexend Deca', sans-serif;">
+        Tokens: <span id="tokenDisplay">0</span></h3>
+      <div style="font-size: 1.2em; color: #888; font-family: 'Lexend Deca', sans-serif;">Log in daily to earn tokens,
+        which can be spent on upgrades boosting your stats! Tokens are also generated every 5 minutes. Time to next token: <span id="tokenTimer">5 minutes</span> </div>
+    </div>
+
+    <div class="daily-reward-card">
+      <div class="reward-title">Daily Reward</div>
+      <div class="streak-info">
+        <div>Current Streak: <span id="currentStreak" style="color: #6366f1; font-weight: bold;">0</span> days</div>
+        <div>Highest Streak: <span id="highestStreak" style="color: #4ade80; font-weight: bold;">0</span> days</div>
+      </div>
+
+      <div class="reward-timer-box">
+        <div id="rewardTimerLabel" style="font-size: 0.9em; color: #888; margin-bottom: 5px;">Next reward in:</div>
+        <div id="rewardTimer" style="font-size: 2em; font-weight: bold; font-family: monospace;">00:00:00</div>
+      </div>
+
+      <div class="reward-amount-box">
+        Next Reward: <span id="nextRewardAmount" style="color: #6366f1; font-weight: bold;">10</span> Tokens
+      </div>
+
+      <button id="claimRewardBtn" class="claim-btn" disabled>
+        Claim Reward
+      </button>
+      <div id="claimLockedMsg" style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Reward not yet available
+      </div>
+    </div>
+
+    <!-- Token Upgrades -->
+    <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
+      <h3 style="text-align: center; margin-bottom: 20px; font-family: 'Lexend Deca', sans-serif; color: #6366f1;">Token
+        Upgrades</h3>
+      <div id="tokenUpgradesContainer" class="energy-upgrades"
+        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+        <!-- Dynamically populated -->
+        <button class="upgrade-btn" id="tUpg0" onclick="game.buyTokenUpgrade(0)">
+          <div class="upg-title">Cash Booster</div>
+          <div class="upg-cost">Cost: 7 Tokens</div>
+          <div class="upg-desc">x1.2 Cash Gain (0/10)</div>
+        </button>
+        <button class="upgrade-btn" id="tUpg1" onclick="game.buyTokenUpgrade(1)">
+          <div class="upg-title">Multiplier Booster</div>
+          <div class="upg-cost">Cost: 10 Tokens</div>
+          <div class="upg-desc">x1.2 Multiplier Gain (0/10)</div>
+        </button>
+        <button class="upgrade-btn" id="tUpg2" onclick="game.buyTokenUpgrade(2)">
+          <div class="upg-title">Rebirth Booster</div>
+          <div class="upg-cost">Cost: 8 Tokens</div>
+          <div class="upg-desc">x1.1 Rebirth Gain (0/10)</div>
+        </button>
+        <button class="upgrade-btn" id="tUpg3" onclick="game.buyTokenUpgrade(3)">
+          <div class="upg-title">Ultra Booster</div>
+          <div class="upg-cost">Cost: 11 Tokens</div>
+          <div class="upg-desc">x1.1 Ultra Gain (0/10)</div>
+        </button>
+        <button class="upgrade-btn" id="tUpg4" onclick="game.buyTokenUpgrade(4)">
+          <div class="upg-title">Super Booster</div>
+          <div class="upg-cost">Cost: 15 Tokens</div>
+          <div class="upg-desc">x1.1 Super Gain (0/10)</div>
+        </button>
+        <button class="upgrade-btn" id="tUpg5" onclick="game.buyTokenUpgrade(5)">
+          <div class="upg-title">Energy Booster</div>
+          <div class="upg-cost">Cost: 12 Tokens</div>
+          <div class="upg-desc">x1.1 Energy Gain (0/10)</div>
+        </button>
+        <button class="upgrade-btn" id="tUpg6" onclick="game.buyTokenUpgrade(6)">
+          <div class="upg-title">Fragment Booster</div>
+          <div class="upg-cost">Cost: 18 Tokens</div>
+          <div class="upg-desc">x1.1 Fragment Gain (0/10)</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="content" id="achievementsContent">
+    <h2 style="text-align: center; margin-bottom: 30px;">Achievements</h2>
+
+    <div
+      style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; max-width: 1000px; margin: 0 auto;">
+
+      <div class="achievement-card" id="ach-goodStart" data-tooltip="+3% Cash gain">
+        <div class="ach-name">Good Start</div>
+        <div class="ach-req">3 Multiplier</div>
+      </div>
+
+      <div class="achievement-card" id="ach-firstRebirth" data-tooltip="+5% Multiplier gain">
+        <div class="ach-name">First Rebirth</div>
+        <div class="ach-req">1 Rebirth</div>
+      </div>
+
+      <div class="achievement-card" id="ach-rebirthEngine" data-tooltip="+5% Rebirth gain">
+        <div class="ach-name">Rebirth Engine</div>
+        <div class="ach-req">5 Rebirths</div>
+      </div>
+
+      <div class="achievement-card" id="ach-kilowatt" data-tooltip="+10% Cash gain">
+        <div class="ach-name">Kilowatt</div>
+        <div class="ach-req">1,000 Energy</div>
+      </div>
+
+      <div class="achievement-card" id="ach-upgradedProduction" data-tooltip="+5% Energy gain">
+        <div class="ach-name">Upgraded Production</div>
+        <div class="ach-req">Buy Energy Upgrade</div>
+      </div>
+
+      <div class="achievement-card" id="ach-ultraMomentum" data-tooltip="+1% Cash, Multiplier, Rebirth, Ultra">
+        <div class="ach-name">Ultra Momentum</div>
+        <div class="ach-req">10 Ultra</div>
+      </div>
+
+      <div class="achievement-card" id="ach-supercharged" data-tooltip="+10% Multiplier gain">
+        <div class="ach-name">Supercharged</div>
+        <div class="ach-req">3 Super</div>
+      </div>
+
+      <div class="achievement-card" id="ach-kilofrag" data-tooltip="+10% Super gain">
+        <div class="ach-name">Kilofrag</div>
+        <div class="ach-req">1,000 Fragments</div>
+      </div>
+
+      <div class="achievement-card" id="ach-superfragment" data-tooltip="+10% Fragments gain">
+        <div class="ach-name">Superfragment</div>
+        <div class="ach-req">10 Super</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <div class="content" id="indexContent">
+    <div class="index-tabs">
+      <button class="index-tab-btn active" id="statIndexTab">Stat Index</button>
+      <button class="index-tab-btn" id="runeIndexTab">Rune Info</button>
+    </div>
+
+    <!-- Main View (Stat Index) -->
+    <div class="index-container" id="indexMainView">
+      <div class="index-sidebar">
+        <div class="index-header">Stat Index</div>
+        <button class="index-item" data-stat="tier">Tier</button>
+        <button class="index-item" data-stat="energy">Energy</button>
+        <button class="index-item" data-stat="fragments">Fragments</button>
+        <button class="index-item active" data-stat="cash">Cash</button>
+        <button class="index-item" data-stat="multiplier">Multiplier</button>
+        <button class="index-item" data-stat="rebirth">Rebirth</button>
+        <button class="index-item" data-stat="ultra">Ultra</button>
+        <button class="index-item" data-stat="super">Super</button>
+      </div>
+      <div class="index-details">
+        <div id="indexDetailTitle" class="detail-title">Cash</div>
+        <div id="indexDetailId" class="detail-id">ID: 0001</div>
+        <div class="detail-section">
+          <div class="detail-label">Description</div>
+          <div id="indexDetailDesc" class="detail-text">
+            The basic currency of the game. Used to buy multipliers and upgrades.
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Boosts</div>
+          <div id="indexDetailBoosts" class="detail-boosts">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rune Info Page (Tier 7+) -->
+    <div class="index-container" id="runeMainView">
+      <div class="index-sidebar">
+        <div class="index-header">Rune Index</div>
+        <button class="index-item rune-index-item active" data-rune="F01"
+          onclick="game.runeSystem.selectRuneItem(this)">Mini</button>
+        <button class="index-item rune-index-item" data-rune="F02"
+          onclick="game.runeSystem.selectRuneItem(this)">Small</button>
+        <button class="index-item rune-index-item" data-rune="F03"
+          onclick="game.runeSystem.selectRuneItem(this)">Medium</button>
+        <button class="index-item rune-index-item" data-rune="F04"
+          onclick="game.runeSystem.selectRuneItem(this)">Large</button>
+        <button class="index-item rune-index-item" data-rune="F05"
+          onclick="game.runeSystem.selectRuneItem(this)">Extreme</button>
+        <button class="index-item rune-index-item" data-rune="F06"
+          onclick="game.runeSystem.selectRuneItem(this)">Huge</button>
+        <button class="index-item rune-index-item" data-rune="F07"
+          onclick="game.runeSystem.selectRuneItem(this)">Gigantic</button>
+        <button class="index-item rune-index-item" data-rune="F08"
+          onclick="game.runeSystem.selectRuneItem(this)">Secret</button>
+      </div>
+      <div class="index-details">
+        <div id="runeDetailTitle" class="detail-title">Mini Rune</div>
+        <div id="runeDetailId" class="detail-id">ID: F01</div>
+        <div class="detail-section">
+          <div class="detail-label">Description</div>
+          <div id="runeDetailDesc" class="detail-text">
+            Loading...
+          </div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Statistics</div>
+          <div id="runeDetailBoosts" class="detail-boosts">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="content" id="optionsContent">
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <button class="save-btn" id="exportBtn">Export Save</button>
+      <button class="save-btn" id="importBtn">Import Save</button>
+    </div>
+    <textarea id="importText" rows="17"
+      style="width: 100%; max-width: 1200px; margin-bottom: 20px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid #555; padding: 10px; font-family: monospace;"
+      placeholder="Paste save data here"></textarea><br>
+    <button class="save-btn" id="hardResetBtn">Hard Reset</button>
+
+    <div style="margin-top: 20px;">
+      <label for="notationSelect" style="color: white; margin-right: 10px;">Notation:</label>
+      <select id="notationSelect"
+        style="padding: 5px; border-radius: 5px; background: #333; color: white; border: 1px solid #555;">
+        <option value="standard">Standard</option>
+        <option value="mixed scientific">Mixed Scientific</option>
+        <option value="scientific">Scientific</option>
+        <option value="scientific2">Scientific II</option>
+        <option value="infinity">Infinity</option>
+        <option value="birds array">Bird's Array</option>
+        <option value="blind">Blind</option>
+      </select>
+    </div>
+    <div style="margin-top: 20px;">
+      <label for="musicSelect" style="color: white; margin-right: 10px;">Background Music:</label>
+      <select id="musicSelect"
+        style="padding: 5px; border-radius: 5px; background: #333; color: white; border: 1px solid #555;">
+        <option value="none">None</option>
+        <option value="timeleaper">Hinkik - Time Leapers</option>
+        <option value="realm">Hinkik - Realms</option>
+        <option value="explorer">Hinkik - Explorers</option>
+        <option value="outbreak">Hinkik - Outbreaker</option>
+        <option value="floating">Kevin McLeod - Floating Cities</option>
+        <option value="cipher">Kevin McLeod - Cipher</option>
+        <option value="omega">Scott Buckley - Omega</option>
+        <option value="signal">Scott Buckley - Signal to Noise</option>
+      </select>
+    </div>
+    <div style="margin-top: 20px;">
+      <button class="save-btn" id="creditsBtn">Credits</button>
+    </div>
+
+    <div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+      <h3>Stats</h3>
+      <div id="playTimeDisplay" style="font-size: 1.2em; color: #c0c0c0;">Time Played: 0:00:00</div>
+      <div id="optTtlCash" style="font-size: 1.2em; color: #c0c0c0;">Total Cash: $</div>
+      <div id="optTotalRunes" style="font-size: 1.2em; color: #c0c0c0;">Total Runes Opened: 0</div>
+      <div id="optRuneSpeed" style="font-size: 1.2em; color: #c0c0c0;">Rune Speed: 1.00x</div>
+      <div id="optRuneBulk" style="font-size: 1.2em; color: #c0c0c0;">Rune Bulk: 1</div>
+      <div id="optRuneLuck" style="font-size: 1.2em; color: #c0c0c0;">Rune Luck: x1</div>
+    </div>
+  </div>
+
+  <div class="content" id="creditsContent">
+    <button class="save-btn" id="backBtn" style="margin-bottom: 30px;">← Back</button>
+    <h1>Credits</h1>
+    <div class="subtitle">Music used in this game</div>
+    <h2>From Hinkik:</h2>
+    <ul>
+      <li>Time Leaper</li>
+      <li>Realms</li>
+      <li>Ena</li>
+      <li>Outbreaker</li>
+      <li>Explorer</li>
+    </ul>
+    <div class="license">
+      Music by Hinkik — free to use with credit  
+      <br>Source: SoundCloud / Newgrounds
+    </div>
+
+    <h2>From Kevin MacLeod:</h2>
+    <ul>
+      <li>Floating Cities</li>
+      <li>Cipher</li>
+    </ul>
+    <div class="license">
+      Music by Kevin MacLeod (incompetech.com)  
+      <br>Licensed under Creative Commons Attribution 4.0  
+      <div class="links">
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">
+          https://creativecommons.org/licenses/by/4.0/
+        </a>
+      </div>
+    </div>
+
+    <h2>From Scott Buckley:</h2>
+    <ul>
+      <li>Omega</li>
+      <li>Signal to Noise</li>
+    </ul>
+    <div class="license">
+      Music by Scott Buckley  
+      <br>Licensed under Creative Commons Attribution 4.0  
+      <div class="links">
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">
+          https://creativecommons.org/licenses/by/4.0/
+        </a>
+        <br>
+        <a href="https://www.scottbuckley.com.au" target="_blank">
+          https://www.scottbuckley.com.au
+        </a>
+      </div>
+    </div>
+
+    <div class="footer">
+      This game is not affiliated with the above artists.  
+      <br>All rights remain with their respective creators.
+    </div>
+  </div>
+
+  <script src="break_eternity.js"></script>
+  <script src="NumberFormat.js"></script>
+  <script src="main.js"></script>
+  <script src="fragments.js"></script>
+  <script src="rune.js"></script>
+</body>
+
+</html>
