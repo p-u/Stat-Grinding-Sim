@@ -931,10 +931,11 @@
   <!-- STATS -->
   <div class="content active" id="statsContent">
     <div class="stat-line cash-line" id="cashDisplay">Cash: 0 (+0/sec)</div>
-    <div class="stat-line multiplier-line" id="multiplierDisplay">Multiplier: 1 (+1/reset) (next at 100)</div>
-    <div class="stat-line rebirth-line" id="rebirthDisplay">Rebirth: 0 (next at 75)</div>
-    <div class="stat-line ultra-line" id="ultraDisplay">Ultra: 0 (next at 10)</div>
+    <div class="stat-line multiplier-line" id="multiplierDisplay">Multiplier: 1 (+1/reset) (next at 100 Cash)</div>
+    <div class="stat-line rebirth-line" id="rebirthDisplay">Rebirth: 0 (next at 75 Multi)</div>
+    <div class="stat-line ultra-line" id="ultraDisplay">Ultra: 0 (next at 10 Rebirth)</div>
     <div class="stat-line super-line" id="superDisplay" style="display:none;">Super: 0 (next at 20 Ultra)</div>
+    <div class="stat-line hyper-line" id="hyperDisplay" style="display:none;">Hyper: 0 (next at 25 Super)</div>
   </div>
 
   <!-- TIER UP -->
@@ -1245,6 +1246,7 @@
         <button class="index-item" data-stat="rebirth">Rebirth</button>
         <button class="index-item" data-stat="ultra">Ultra</button>
         <button class="index-item" data-stat="super">Super</button>
+        <button class="index-item" data-stat="hyper">Hyper</button>
       </div>
       <div class="index-details">
         <div id="indexDetailTitle" class="detail-title">Cash</div>

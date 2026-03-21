@@ -7,6 +7,78 @@ window.modInfo = {
     allowSmall: true
 };
 
+// === CONSTANTS ===
+
+// Tab identifiers used for data-driven tab switching
+const TABS = ['stats', 'tier', 'energy', 'fragments', 'achievements', 'tokens', 'index', 'options'];
+
+// Achievement unlock conditions (checked every tick)
+const ACHIEVEMENT_DEFS = [
+  { key: 'goodStart',         check: g => g.multiplier.gte(3) },
+  { key: 'firstRebirth',      check: g => g.rebirthCount.gte(1) },
+  { key: 'rebirthEngine',     check: g => g.rebirthCount.gte(5) },
+  { key: 'kilowatt',          check: g => g.energy.gte(1000) },
+  { key: 'upgradedProduction', check: g => g.energyUpgrades.some(u => u) },
+  { key: 'ultraMomentum',     check: g => g.ultra.gte(10) },
+  { key: 'supercharged',      check: g => g.super.gte(3) },
+  { key: 'superfragment',     check: g => g.super.gte(10) },
+  { key: 'kilofrag',          check: g => g.fragments.gte(1000) },
+];
+
+// Achievement stat bonuses: which stats each unlocked achievement boosts
+const ACHIEVEMENT_BONUSES = [
+  { key: 'goodStart',         effects: { cashBonus: 1.03 } },
+  { key: 'firstRebirth',      effects: { multGainBonus: 1.05 } },
+  { key: 'rebirthEngine',     effects: { rebirthGainBonus: 1.05 } },
+  { key: 'kilowatt',          effects: { cashBonus: 1.10 } },
+  { key: 'upgradedProduction', effects: { energyBonus: 1.05 } },
+  { key: 'ultraMomentum',     effects: { cashBonus: 1.01, multGainBonus: 1.01, rebirthGainBonus: 1.01, ultraGainBonus: 1.01 } },
+  { key: 'kilofrag',          effects: { superBonus: 1.1 } },
+  { key: 'superfragment',     effects: { fragmentBonus: 1.1 } },
+  { key: 'supercharged',      effects: { multGainBonus: 1.10 } },
+];
+
+// Minimum tier required for each energy upgrade (by index)
+const ENERGY_UPGRADE_TIER_REQ = [3, 3, 4, 4, 5, 5, 6, 7, 8];
+const ENERGY_UPGRADE_COSTS = [4000, 10000, 25000, 50000, 150000, 400000, 750000, 2500000];
+const ENERGY_UPGRADE_LABELS = ['4,000', '10,000', '25,000', '50,000', '150,000', '400,000', '750,000', '2.5M'];
+
+// Tier-up requirement text displayed on the Tier tab
+const TIER_REQ_TEXT = [
+  'Cost: 10 Multiplier',
+  'Cost: 3 Rebirths',
+  'Cost: 20 Rebirths',
+  'Cost: 10 Ultra',
+  'Cost: 2 Super',
+  'Cost: 70 Ultra OR 5 Super',
+  "Cost: 10 'Energy Boost' and 6 'Bigger and Better' fragment upgrades",
+  "Cost: 2,000,000 Fragments",
+];
+
+// Shared default values for runes and achievements (used by constructor and hardReset)
+const DEFAULT_RUNES = { F01: 0, F02: 0, F03: 0, F04: 0, F05: 0, F06: 0, F07: 0, F08: 0 };
+const DEFAULT_RUNE_EFF = { F01: 1, F02: 0, F03: 1, F04: 0, F05: 1, F06: 1, F07: 0, F08: 1 };
+const DEFAULT_ACHIEVEMENTS = {
+  goodStart: false, firstRebirth: false, rebirthEngine: false,
+  kilowatt: false, upgradedProduction: false, ultraMomentum: false,
+  supercharged: false, kilofrag: false, superfragment: false
+};
+
+// === HELPER FUNCTIONS ===
+
+// Simple power softcap: if value > threshold, apply power to the whole value
+function softcap(value, threshold, power) {
+  return value > threshold ? value ** power : value;
+}
+
+// Offset softcap: if value > threshold, power-scale only the excess above (threshold-1)
+function offsetSoftcap(value, threshold, power) {
+  const offset = threshold - 1;
+  return value > threshold ? ((value - offset) ** power) + offset : value;
+}
+
+// === GAME CLASS ===
+
 class StatGrindingGame {
 
   // initialisation
@@ -23,6 +95,7 @@ class StatGrindingGame {
     this.ultra = new Decimal(0);
     this.super = new Decimal(0);
     this.energy = new Decimal(0);
+    this.hyper = new Decimal(0);
     this.timeToken = new Decimal(300);
     this.superBonus = new Decimal(1);
     this.energyUpgrades = [false, false, false, false, false, false, false, false, false, false, false, false];
@@ -87,6 +160,7 @@ class StatGrindingGame {
     this.rebirthDisplay = document.getElementById('rebirthDisplay');
     this.ultraDisplay = document.getElementById('ultraDisplay');
     this.superDisplay = document.getElementById('superDisplay');
+    this.hyperDisplay = document.getElementById('hyperDisplay');
     this.statsTab = document.getElementById('statsTab');
     this.tierTab = document.getElementById('tierTab');
     this.energyTab = document.getElementById('energyTab');
@@ -313,58 +387,28 @@ class StatGrindingGame {
   }
   
   switchTab(tab) {
-    this.statsTab.classList.remove('active');
-    this.tierTab.classList.remove('active');
-    this.energyTab.classList.remove('active');
-    this.fragmentsTab.classList.remove('active');
-    this.achievementsTab.classList.remove('active');
-    this.tokensTab.classList.remove('active');
-    this.indexTab.classList.remove('active');
-    this.optionsTab.classList.remove('active');
-    this.statsContent.classList.remove('active');
-    this.tierContent.classList.remove('active');
-    this.energyContent.classList.remove('active');
-    this.fragmentsContent.classList.remove('active');
-    this.achievementsContent.classList.remove('active');
-    this.tokensContent.classList.remove('active');
-    this.indexContent.classList.remove('active');
-    this.optionsContent.classList.remove('active');
-    if (this.creditsContent) this.creditsContent.classList.remove('active');
+    // Deactivate all tabs and content panels
+    for (const t of TABS) {
+      document.getElementById(t + 'Tab')?.classList.remove('active');
+      document.getElementById(t + 'Content')?.classList.remove('active');
+    }
+    document.getElementById('creditsContent')?.classList.remove('active');
 
-    if (tab === 'stats') {
-      this.statsTab.classList.add('active');
-      this.statsContent.classList.add('active');
-    } else if (tab === 'tier') {
-      this.tierTab.classList.add('active');
-      this.tierContent.classList.add('active');
-    } else if (tab === 'energy') {
-      this.energyTab.classList.add('active');
-      this.energyContent.classList.add('active');
-    } else if (tab === 'fragments') {
-      this.fragmentsTab.classList.add('active');
-      this.fragmentsContent.classList.add('active');
-      if (this.fragmentCanvas) this.initFragmentInteraction();
-    } else if (tab === 'achievements') {
-      this.achievementsTab.classList.add('active');
-      this.achievementsContent.classList.add('active');
-    } else if (tab === 'tokens') {
-      this.tokensTab.classList.add('active');
-      this.tokensContent.classList.add('active');
-    } else if (tab === 'index') {
-      this.indexTab.classList.add('active');
-      this.indexContent.classList.add('active');
-      
-      // Update active sub-tab view
-      if (this.runeIndexPageBtn && this.runeIndexPageBtn.classList.contains('active')) {
-          this.switchIndexPage('runes');
+    // Activate the selected tab and content
+    document.getElementById(tab + 'Tab')?.classList.add('active');
+    document.getElementById(tab + 'Content')?.classList.add('active');
+
+    // Special cases
+    if (tab === 'fragments' && this.fragmentCanvas) {
+      this.initFragmentInteraction();
+    }
+    if (tab === 'index') {
+      const runeTab = document.getElementById('runeIndexTab');
+      if (runeTab && runeTab.classList.contains('active')) {
+        this.switchIndexPage('runes');
       } else {
-          this.switchIndexPage('stats');
+        this.switchIndexPage('stats');
       }
-    } else if (tab === 'options') {
-      this.optionsTab.classList.add('active');
-      this.optionsContent.classList.add('active');
-    } else if (tab === 'credits') {
-      if (this.creditsContent) this.creditsContent.classList.add('active');
     }
   }
 
@@ -420,52 +464,38 @@ class StatGrindingGame {
   }
 
   updateRuneEff() {
-    let f01eff = this.runes["F01"]*0.04
-    if (f01eff > 1) {
-      f01eff = f01eff ** 0.5
-    }
-    this.runeeff["F01"] = f01eff + 1
-    let f02eff = this.runes["F02"] * 0.02
-    if (f02eff > 1) {
-      f02eff = f02eff ** 0.7
-    }
-    if (f02eff > 5) {
-      f02eff = ((f02eff - 4) ** 0.6) + 4
-    }
-    this.runeeff["F02"] = f02eff
-    let f03eff = this.runes["F03"] * 0.04
-    if (f03eff > 1) {
-      f03eff = f03eff ** 0.4
-    }
-    this.runeeff["F03"] = f03eff + 1
-    let f05eff = this.runes["F05"] * 0.05
-    if (f05eff > 1) {
-      f05eff = f05eff ** 0.4
-    }
-    this.runeeff["F05"] = f05eff + 1
-    let f06eff = this.runes["F06"] * 0.03
-    if (f06eff > 1) {
-      f06eff = f06eff ** 0.4
-    }
-    this.runeeff["F06"] = f06eff + 1
-    let f04eff = this.runes["F04"] * 0.1
-    if (f04eff > 5) {
-      f04eff = ((f04eff - 4) ** 0.5) + 4
-    }
-    this.runeeff["F04"] = f04eff
-    let f07eff = this.runes["F07"] * 0.5
-    if (f07eff > 50) {
-      f07eff = ((f07eff - 49) ** 0.6) + 49
-    }
-    this.runeeff["F07"] = f07eff
-    let f08eff = this.runes["F08"] * 0.025
-    if (f08eff > 0.2) {
-      f08eff = ((f08eff + 0.8) ** 0.5) - 0.8
-    }
-    if (f08eff > 0.5) {
-      f08eff = ((f08eff + 0.5) ** 0.5) - 0.5
-    }
-    this.runeeff["F08"] = f08eff + 1
+    // F01 (Mini): +0.04/rune, softcap ^0.5 at 1, boosts Cash & Multiplier
+    this.runeeff.F01 = softcap(this.runes.F01 * 0.04, 1, 0.5) + 1;
+
+    // F02 (Small): +0.02/rune, softcap ^0.7 at 1, offset ^0.6 at 5, boosts Fragments
+    let f02 = softcap(this.runes.F02 * 0.02, 1, 0.7);
+    this.runeeff.F02 = offsetSoftcap(f02, 5, 0.6);
+
+    // F03 (Medium): +0.04/rune, softcap ^0.4 at 1, boosts Rebirth
+    this.runeeff.F03 = softcap(this.runes.F03 * 0.04, 1, 0.4) + 1;
+
+    // F04 (Large): +0.1/rune, offset ^0.5 at 5, boosts Fragments
+    this.runeeff.F04 = offsetSoftcap(this.runes.F04 * 0.1, 5, 0.5);
+
+    // F05 (Extreme): +0.05/rune, softcap ^0.4 at 1, boosts Ultra & Energy
+    this.runeeff.F05 = softcap(this.runes.F05 * 0.05, 1, 0.4) + 1;
+
+    // F06 (Huge): +0.03/rune, softcap ^0.4 at 1, boosts Super
+    this.runeeff.F06 = softcap(this.runes.F06 * 0.03, 1, 0.4) + 1;
+
+    // F07 (Gigantic): +0.5/rune, offset ^0.6 at 50, boosts Fragments
+    this.runeeff.F07 = offsetSoftcap(this.runes.F07 * 0.5, 50, 0.6);
+
+    // F08 (Secret): +0.025/rune, two custom softcaps, boosts All Stats
+    let f08 = this.runes.F08 * 0.025;
+    if (f08 > 0.2) f08 = ((f08 + 0.8) ** 0.5) - 0.8;
+    if (f08 > 0.5) f08 = ((f08 + 0.5) ** 0.5) - 0.5;
+    this.runeeff.F08 = f08 + 1;
+  }
+
+  // Helper: get the combined rune multiplier for a set of rune IDs
+  getRuneBoost(...runeIds) {
+    return runeIds.reduce((product, id) => product * this.runeeff[id], 1);
   }
 
   getRebirthCost() {
@@ -530,8 +560,7 @@ class StatGrindingGame {
     if (this.fragmentUpgradesPurchased[0] > 0) {
         baseProd = baseProd.mul(new Decimal(1.1).pow(this.fragmentUpgradesPurchased[0]));
     }
-    let runeboost = this.runeeff["F05"] * this.runeeff["F08"]
-    baseProd = baseProd.mul(runeboost)
+    baseProd = baseProd.mul(this.getRuneBoost('F05', 'F08'))
     baseProd = baseProd.mul(new Decimal(1).add(this.super.mul(0.2)));
     const achBonuses = this.getAchievementBonuses();
     baseProd = baseProd.mul(achBonuses.energyBonus);
@@ -619,7 +648,8 @@ class StatGrindingGame {
           }
           val = val.mul(this.getTokenUpgradeBonus(6));
           val = val.mul(this.fragmentBonus)
-          val = val.mul((this.runeeff["F02"] + this.runeeff["F04"] + this.runeeff["F07"] + 1) * this.runeeff["F08"])
+          const fragmentRuneBoost = (this.runeeff.F02 + this.runeeff.F04 + this.runeeff.F07 + 1) * this.runeeff.F08;
+          val = val.mul(fragmentRuneBoost)
           this.fragments = this.fragments.add(val);
           this.shards.splice(index, 1);
           collectSound.play();
@@ -755,63 +785,31 @@ class StatGrindingGame {
     return { cashBoost, multBoost, rebirthBoost };
   }
   
-  // Check and unlock achievements
+  // Check and unlock achievements (definitions are in ACHIEVEMENT_DEFS constant)
   checkAchievements() {
-    if (!this.achievements.goodStart && this.multiplier.gte(3)) {
-      this.achievements.goodStart = true;
-    }
-    if (!this.achievements.firstRebirth && this.rebirthCount.gte(1)) {
-      this.achievements.firstRebirth = true;
-    }
-    if (!this.achievements.rebirthEngine && this.rebirthCount.gte(5)) {
-      this.achievements.rebirthEngine = true;
-    }
-    if (!this.achievements.kilowatt && this.energy.gte(1000)) {
-      this.achievements.kilowatt = true;
-    }
-    if (!this.achievements.upgradedProduction && this.energyUpgrades.some(u => u)) {
-      this.achievements.upgradedProduction = true;
-    }
-    if (!this.achievements.ultraMomentum && this.ultra.gte(10)) {
-      this.achievements.ultraMomentum = true;
-    }
-    if (!this.achievements.supercharged && this.super.gte(3)) {
-      this.achievements.supercharged = true;
-    }
-    if (!this.achievements.superfragment && this.super.gte(10)) {
-      this.achievements.superfragment = true;
-    }
-    if (!this.achievements.kilofrag && this.fragments.gte(1000)) {
-      this.achievements.kilofrag = true;
+    for (const { key, check } of ACHIEVEMENT_DEFS) {
+      if (!this.achievements[key] && check(this)) {
+        this.achievements[key] = true;
+      }
     }
   }
   
-  // Get achievement bonuses
+  // Get achievement bonuses (definitions are in ACHIEVEMENT_BONUSES constant)
   getAchievementBonuses() {
-    let cashBonus = new Decimal(1);
-    let multGainBonus = new Decimal(1);
-    let rebirthGainBonus = new Decimal(1);
-    let ultraGainBonus = new Decimal(1);
-    let energyBonus = new Decimal(1);
-    let fragmentBonus = new Decimal(1);
-    let superBonus = new Decimal(1);
-    
-    if (this.achievements.goodStart) cashBonus = cashBonus.mul(1.03);
-    if (this.achievements.firstRebirth) multGainBonus = multGainBonus.mul(1.05);
-    if (this.achievements.rebirthEngine) rebirthGainBonus = rebirthGainBonus.mul(1.05);
-    if (this.achievements.kilowatt) cashBonus = cashBonus.mul(1.10);
-    if (this.achievements.upgradedProduction) energyBonus = energyBonus.mul(1.05);
-    if (this.achievements.ultraMomentum) {
-      cashBonus = cashBonus.mul(1.01);
-      multGainBonus = multGainBonus.mul(1.01);
-      rebirthGainBonus = rebirthGainBonus.mul(1.01);
-      ultraGainBonus = ultraGainBonus.mul(1.01);
+    const bonuses = {
+      cashBonus: new Decimal(1), multGainBonus: new Decimal(1),
+      rebirthGainBonus: new Decimal(1), ultraGainBonus: new Decimal(1),
+      energyBonus: new Decimal(1), fragmentBonus: new Decimal(1),
+      superBonus: new Decimal(1),
+    };
+    for (const { key, effects } of ACHIEVEMENT_BONUSES) {
+      if (this.achievements[key]) {
+        for (const [stat, mult] of Object.entries(effects)) {
+          bonuses[stat] = bonuses[stat].mul(mult);
+        }
+      }
     }
-    if (this.achievements.kilofrag) superBonus = superBonus.mul(1.1);
-    if (this.achievements.superfragment) fragmentBonus = fragmentBonus.mul(1.1);
-    if (this.achievements.supercharged) multGainBonus = multGainBonus.mul(1.10);
-    
-    return { cashBonus, multGainBonus, rebirthGainBonus, ultraGainBonus, energyBonus, superBonus, fragmentBonus };
+    return bonuses;
   }
 
   getIncomeRate() {
@@ -823,8 +821,7 @@ class StatGrindingGame {
     let ultraBoost = this.ultra.mul(1.5).add(1);
     let withRebirthnUltra = withMultiplier.mul(this.getRebirthCashBonus()).mul(this.cashBonus).mul(ultraBoost);
     if (this.energyUpgrades[2]) withRebirthnUltra = withRebirthnUltra.mul(1.25);
-    let runeboost = this.runeeff["F01"] * this.runeeff["F08"]
-    return withRebirthnUltra.mul(boosts.cashBoost).mul(achBonuses.cashBonus).mul(this.getTokenUpgradeBonus(0)).mul(runeboost);
+    return withRebirthnUltra.mul(boosts.cashBoost).mul(achBonuses.cashBonus).mul(this.getTokenUpgradeBonus(0)).mul(this.getRuneBoost('F01', 'F08'));
   }
   
   // Load save from localStorage
@@ -838,6 +835,7 @@ class StatGrindingGame {
     this.rebirthCount = new Decimal(data.rebirthCount || 0);
     this.ultra = new Decimal(data.ultra || 0);
     this.super = new Decimal(data.super || 0);
+    this.hyper = new Decimal(data.hyper || 0);
     this.energy = new Decimal(data.energy || 0);
     this.timeToken = new Decimal(data.timeToken ?? 300);
     this.ttlcash = new Decimal(data.ttlcash || 0);
@@ -897,6 +895,7 @@ class StatGrindingGame {
     this.tier = data.tier || 0;
     this.backgroundMusic = data.backgroundMusic || 'signal';
     this.updateBonuses();
+    if ((((this.lastDailyRewardTime + (24 * 60 * 60 * 1000)) - Date.now())/1000) > 86400) this.lastDailyRewardTime = Date.now() // Such that if Next Reward duration >23:59:59, set it to 23:59:59
   }
   
   loadSave() {
@@ -931,6 +930,7 @@ class StatGrindingGame {
       rebirthCount: this.rebirthCount,
       ultra: this.ultra,
       super: this.super,
+      hyper: this.hyper,
       energy: this.energy,
       runes: this.runes,
       runeeff: this.runeeff,
@@ -969,34 +969,38 @@ class StatGrindingGame {
   // Hard reset
   hardReset() {
     if (confirm('Are you sure you want to hard reset? This will delete all progress and cannot be undone.')) {
+      // Reset all currencies to zero
       this.cash = new Decimal(0);
       this.multiplier = new Decimal(0);
       this.rebirthCount = new Decimal(0);
       this.ultra = new Decimal(0);
       this.super = new Decimal(0);
+      this.hyper = new Decimal(0);
+      this.energy = new Decimal(0);
+      this.fragments = new Decimal(0);
+      this.ttlcash = new Decimal(0);
       this.totalRunesOpened = new Decimal(0);
+      this.timeToken = new Decimal(300);
+
+      // Reset progression
+      this.tier = 0;
+      this.playTime = 0;
+      this.tokens = 0;
       this.runeSpeed = 1;
       this.runeLuck = 1;
       this.runeBulk = 1;
-      this.ttlcash = new Decimal(saveData.ttlcash || 0);
-      this.energy = new Decimal(0);
-      this.timeToken = new Decimal(300);
-      this.runes = { F01: 0, F02: 0, F03: 0, F04: 0, F05: 0, F06: 0, F07: 0, F08: 0 };
-      this.runeeff = { F01: 1, F02: 0, F03: 1, F04: 0, F05: 1, F06: 1, F07: 0, F08: 1 };
-      this.energyUpgrades = [false, false, false, false, false, false, false, false, false, false, false, false];
-      this.fragments = new Decimal(0);
-      this.fragmentUpgradesPurchased = [0, 0, 0, 0, 0, 0, 0, 0];
-      this.tokens = 0;
-      this.tokenUpgrades = [0, 0, 0, 0, 0, 0, 0];
       this.lastDailyRewardTime = 0;
       this.currentStreak = 0;
       this.highestStreak = 0;
-      this.achievements = {
-        goodStart: false, firstRebirth: false, rebirthEngine: false,
-        kilowatt: false, upgradedProduction: false, ultraMomentum: false, supercharged: false
-      };
-      this.playTime = 0;
-      this.tier = 0;
+
+      // Reset upgrades and collections using shared defaults
+      this.runes = { ...DEFAULT_RUNES };
+      this.runeeff = { ...DEFAULT_RUNE_EFF };
+      this.achievements = { ...DEFAULT_ACHIEVEMENTS };
+      this.energyUpgrades = new Array(12).fill(false);
+      this.fragmentUpgradesPurchased = new Array(8).fill(0);
+      this.tokenUpgrades = new Array(7).fill(0);
+
       this.updateBonuses();
       localStorage.removeItem('statGrindingSave');
       this.updateDisplay();
@@ -1042,8 +1046,8 @@ class StatGrindingGame {
       if (this.tier >= 6) {
           multgain = multgain.mul(2);
       }
-      let runeboost = this.runeeff["F01"] * this.runeeff["F08"]
-      multgain = multgain.mul(this.getTokenUpgradeBonus(1)).mul(runeboost);
+      multgain = multgain.mul(this.getTokenUpgradeBonus(1)).mul(this.getRuneBoost('F01', 'F08'));
+      multgain = multgain.mul(new Decimal(1).add(this.hyper.mul(2)))
       this.multiplier = this.multiplier.add(multgain);
       this.saveToStorage();
     }
@@ -1058,6 +1062,7 @@ class StatGrindingGame {
       this.rebirthCount = new Decimal(0);
       this.ultra = new Decimal(0);
       this.super = new Decimal(0);
+      this.hyper = new Decimal(0);
       this.fragments = new Decimal(0);
       this.energy = new Decimal(0);
       this.energyUpgrades = this.energyUpgrades.map(() => false);
@@ -1089,6 +1094,7 @@ class StatGrindingGame {
     if (this.super.gte(2) && this.tier === 4) return true;
     if ((this.ultra.gte(70) || this.super.gte(5)) && this.tier === 5) return true;
     if (this.fragmentUpgradesPurchased[0]>=10 && this.fragmentUpgradesPurchased[1]>=6 && this.tier === 6) return true;
+    if (this.fragments.gte(2e6) && this.tier === 7) return true;
     return false;
   }
   
@@ -1126,6 +1132,9 @@ class StatGrindingGame {
       }
       if (this.ultra.gte(this.getSuperCost())) {
         this.performSuper();
+      }
+      if (this.super.gte(this.getHyperCost())) {
+        this.performHyper();
       }
       // Handle Rune Hold
       if (this.isHoldingRune && this.fragments.gte(5000)) {
@@ -1165,8 +1174,7 @@ class StatGrindingGame {
       if (this.energyUpgrades[1]) gain = gain.mul(1.25);
       gain = gain.mul(achBonuses.rebirthGainBonus);
       gain = gain.mul(this.getTokenUpgradeBonus(2));
-      let runeboost = this.runeeff["F03"] * this.runeeff["F08"]
-      gain = gain.mul(runeboost)
+      gain = gain.mul(this.getRuneBoost('F03', 'F08'))
       this.rebirthCount = this.rebirthCount.add(gain);
       this.cash = new Decimal(0);
       this.saveToStorage();
@@ -1181,9 +1189,9 @@ class StatGrindingGame {
       this.cash = new Decimal(0);
       const achBonuses = this.getAchievementBonuses();
       let gain = this.ultraMult; 
-      let runeboost = this.runeeff["F05"] * this.runeeff["F08"]
-      gain = gain.mul(runeboost)
+      gain = gain.mul(this.getRuneBoost('F05', 'F08'))
       gain = gain.mul(new Decimal(1).add(this.super.mul(0.5)));
+      gain = gain.mul(new Decimal(1).add(this.hyper.mul(2)))
       if (this.energyUpgrades[2]) gain = gain.mul(1.25);
       gain = gain.mul(achBonuses.ultraGainBonus);
       gain = gain.mul(this.getTokenUpgradeBonus(3));
@@ -1198,6 +1206,12 @@ class StatGrindingGame {
     return cost
   }
 
+  getHyperCost() {
+    // Placeholder cost — player needs 999 Super to Hyper
+    let cost = new Decimal(25).mul(this.hyper.pow((this.hyper.add(1)).log10().div(2).add(1)))
+    return cost;
+  }
+
   performSuper() {
       const cost = this.getSuperCost();
       if (this.ultra.gte(cost)) {
@@ -1206,8 +1220,8 @@ class StatGrindingGame {
           this.multiplier = new Decimal(0);
           this.cash = new Decimal(0);
           let gain = this.getTokenUpgradeBonus(4).mul(this.superBonus)
-          let runeboost = this.runeeff["F06"] * this.runeeff["F08"]
-          gain = gain.mul(runeboost)
+          gain = gain.mul(new Decimal(1).add(this.hyper.mul(2)))
+          gain = gain.mul(this.getRuneBoost('F06', 'F08'))
           this.super = this.super.add(gain);
           
           if (Math.random() < 0.1) {
@@ -1218,6 +1232,24 @@ class StatGrindingGame {
           this.saveToStorage();
           this.updateDisplay();
       }
+  }
+
+  performHyper() {
+    const cost = this.getHyperCost();
+    if (this.super.gte(cost)) {
+      // Reset everything below Hyper
+      this.super = new Decimal(0);
+      this.ultra = new Decimal(0);
+      this.rebirthCount = new Decimal(0);
+      this.multiplier = new Decimal(0);
+      this.cash = new Decimal(0);
+
+      let gain = new Decimal(1); // Base gain of 1 Hyper
+      this.hyper = this.hyper.add(gain);
+
+      this.saveToStorage();
+      this.updateDisplay();
+    }
   }
 
   // Update all displays
@@ -1257,6 +1289,15 @@ class StatGrindingGame {
         } else {
              this.superDisplay.style.display = 'none';
         }
+
+        // Hyper Display
+        if (this.super > 0 || this.hyper > 0) {
+            this.hyperDisplay.style.display = 'block';
+            const nextHyperCost = this.getHyperCost();
+            this.hyperDisplay.innerHTML = `<span style="color: #383737ff;"> Hyper: ${notationChooser(this.hyper, 0)} (next at ${notationChooser(nextHyperCost, 0)} Super)</span>`;
+        } else {
+            this.hyperDisplay.style.display = 'none';
+        }
         
         // Energy Display
         if (this.tier >= 3) {
@@ -1274,28 +1315,11 @@ class StatGrindingGame {
             this.energyMultBoost.innerText = `x${notationChooser(boosts.multBoost, 2)} Multiplier Multiplier`;
             this.energyRebirthBoost.innerText = `x${notationChooser(boosts.rebirthBoost, 2)} Rebirth Multiplier`;
 
-            const costs = [4000, 10000, 25000, 50000, 150000, 400000, 750000, 2.5e6];
-            
             if (this.eUpBtns && this.eUpBtns.length > 0) {
                 this.eUpBtns.forEach((btn, i) => {
                     if (!btn) return;
-                    if ((i === 2 || i === 3) && this.tier < 4) {
-                        btn.style.display = 'none';
-                        return;
-                    }
-                    if ((i === 4 || i === 5) && this.tier < 5) {
-                        btn.style.display = 'none';
-                        return;
-                    }
-                    if (i === 6 && this.tier < 6) {
-                        btn.style.display = 'none';
-                        return;
-                    }
-                    if (i === 7 && this.tier < 7) {
-                        btn.style.display = 'none';
-                        return;
-                    }
-                    if (i === 8 && this.tier < 8) {
+                    // Hide upgrades the player hasn't unlocked yet
+                    if (this.tier < ENERGY_UPGRADE_TIER_REQ[i]) {
                         btn.style.display = 'none';
                         return;
                     }
@@ -1308,12 +1332,9 @@ class StatGrindingGame {
                         if (costEl) costEl.innerText = "Purchased";
                     } else {
                         btn.classList.remove('bought');
-                        btn.disabled = this.energy.lt(costs[i]);
+                        btn.disabled = this.energy.lt(ENERGY_UPGRADE_COSTS[i]);
                         const costEl = btn.querySelector('.upg-cost');
-                        if (costEl) {
-                            const labels = ["4,000", "10,000", "25,000", "50,000", "150,000", "400,000", "750,000", "2.5M"];
-                            costEl.innerText = `Cost: ${labels[i]} Energy`;
-                        }
+                        if (costEl) costEl.innerText = `Cost: ${ENERGY_UPGRADE_LABELS[i]} Energy`;
                     }
                 });
             }
@@ -1381,81 +1402,27 @@ class StatGrindingGame {
                     this.runeList.innerHTML = runeHtml;
                 }
             
-            // Fragment Upgrade Button
-            if (this.fragmentUpgradeBtn) {
-                const purchased = this.fragmentUpgradesPurchased[0];
-                const cost = this.getFragmentUpgradeCost(0);
-                
-                if (purchased >= 25) {
-                    this.fragmentUpgradeBtn.querySelector('.upg-title').innerText = 'Energy Boost (MAXED)';
-                    this.fragmentUpgradeBtn.querySelector('.upg-cost').innerText = 'Purchased';
-                    this.fragmentUpgradeBtn.querySelector('.upg-desc').innerText = '';
-                    this.fragmentUpgradeBtn.disabled = true;
-                    this.fragmentUpgradeBtn.classList.add('bought');
-                } else {
-                    this.fragmentUpgradeBtn.querySelector('.upg-title').innerText = `Energy Boost (${purchased}/25)`;
-                    this.fragmentUpgradeBtn.querySelector('.upg-cost').innerText = `Cost: ${notationChooser(cost, 1)} Fragments`;
-                    this.fragmentUpgradeBtn.querySelector('.upg-desc').innerText = 'x1.1 Energy Production';
-                    this.fragmentUpgradeBtn.disabled = this.fragments.lt(cost);
-                    this.fragmentUpgradeBtn.classList.remove('bought');
-                }
-                this.fragmentUpgradeBtn.querySelector('.upg-total').innerText = `Currently: x${notationChooser(new Decimal(1.1).pow(purchased), 2)}`;
-            }
-            
-            // Fragment Upgrade 2: Bigger and Better
-            const fragUpgBtn2 = document.getElementById('fragmentUpgradeBtn2');
-            if (fragUpgBtn2) {
-                fragUpgBtn2.style.display = this.tier >= 6 ? 'inline-block' : 'none';
-                if (this.tier >= 6) {
-                    const purchased2 = this.fragmentUpgradesPurchased[1];
-                    const cost2 = this.getFragmentUpgradeCost(1);
-                    if (purchased2 >= 15) {
-                      fragUpgBtn2.querySelector('.upg-desc').innerText = '';
-                    } else if (purchased2 >= 13) {
-                      fragUpgBtn2.querySelector('.upg-desc').innerText = 'x1.5 Fragments';
-                    } else if (purchased2 == 12) {
-                      fragUpgBtn2.querySelector('.upg-desc').innerText = '+0.2s duration, x1.5 Fragments';
-                    } else {
-                      fragUpgBtn2.querySelector('.upg-desc').innerText = '+0.4s duration, x1.5 Fragments';
-                    }
-                    if (purchased2 >= 15) {
-                        fragUpgBtn2.querySelector('.upg-title').innerText = 'Bigger and Better (MAXED)';
-                        fragUpgBtn2.querySelector('.upg-cost').innerText = 'Purchased';
-                        fragUpgBtn2.disabled = true;
-                        fragUpgBtn2.classList.add('bought');
-                    } else {
-                        fragUpgBtn2.querySelector('.upg-title').innerText = `Bigger and Better (${purchased2}/15)`;
-                        fragUpgBtn2.querySelector('.upg-cost').innerText = `Cost: ${notationChooser(cost2, 1)} Fragments`;
-                        fragUpgBtn2.querySelector('.upg-desc').innerText = '+0.4s duration, x1.5 Fragments';
-                        fragUpgBtn2.disabled = this.fragments.lt(cost2);
-                        fragUpgBtn2.classList.remove('bought');
-                    }
-                    document.getElementById('fragmentUpgrade2Total').innerText = `Currently: +${Math.min(this.fragmentUpgradesPurchased[1] * 0.4, 5)}s duration, x${notationChooser(Decimal.pow(1.5, purchased2), 2)} Fragments`;
-                }
-            }
-            // Fragment Upgrade 3: Super Fragment
-            const fragUpgBtn3 = document.getElementById('fragmentUpgradeBtn3');
-            if (fragUpgBtn3) {
-                fragUpgBtn3.style.display = this.tier >= 7 ? 'inline-block' : 'none';
-                if (this.tier >= 7) {
-                    const purchased3 = this.fragmentUpgradesPurchased[2];
-                    const cost3 = this.getFragmentUpgradeCost(2);
-                    if (purchased3 >= 2) {
-                        fragUpgBtn3.querySelector('.upg-title').innerText = 'Super Fragment (MAXED)';
-                        fragUpgBtn3.querySelector('.upg-cost').innerText = 'Purchased';
-                        fragUpgBtn3.querySelector('.upg-desc').innerText = '';
-                        fragUpgBtn3.disabled = true;
-                        fragUpgBtn3.classList.add('bought');
-                    } else {
-                        fragUpgBtn3.querySelector('.upg-title').innerText = `Super Fragment (${purchased3}/2)`;
-                        fragUpgBtn3.querySelector('.upg-cost').innerText = `Cost: ${notationChooser(cost3, 1)} Fragments`;
-                        fragUpgBtn3.querySelector('.upg-desc').innerText = 'Gain an OP boost of x3 Fragments';
-                        fragUpgBtn3.disabled = this.fragments.lt(cost3);
-                        fragUpgBtn3.classList.remove('bought');
-                    }
-                    document.getElementById('fragmentUpgrade3Total').innerText = `Currently: x${notationChooser(Decimal.pow(3, purchased3), 2)}`;
-                }
-            }
+            // Fragment Upgrade Buttons — use a helper to avoid repeating the same pattern
+            this.updateFragUpgradeBtn(
+              this.fragmentUpgradeBtn, 0, 'Energy Boost', 25,
+              'x1.1 Energy Production',
+              (p) => `Currently: x${notationChooser(new Decimal(1.1).pow(p), 2)}`,
+              0  // always visible at tier 5+
+            );
+            this.updateFragUpgradeBtn(
+              document.getElementById('fragmentUpgradeBtn2'), 1, 'Bigger and Better', 15,
+              '+0.4s duration, x1.5 Fragments',
+              (p) => `Currently: +${Math.min(p * 0.4, 5)}s duration, x${notationChooser(Decimal.pow(1.5, p), 2)} Fragments`,
+              6,  // visible at tier 6+
+              'fragmentUpgrade2Total'
+            );
+            this.updateFragUpgradeBtn(
+              document.getElementById('fragmentUpgradeBtn3'), 2, 'Super Fragment', 2,
+              'Gain an OP boost of x3 Fragments',
+              (p) => `Currently: x${notationChooser(Decimal.pow(3, p), 2)}`,
+              7,  // visible at tier 7+
+              'fragmentUpgrade3Total'
+            );
             
         } else {
             this.fragmentsTab.style.display = 'none';
@@ -1668,23 +1635,8 @@ class StatGrindingGame {
         if (currentTierBenefits) currentTierBenefits.innerHTML = getTierHTML(this.tier);
         if (nextTierBenefits) nextTierBenefits.innerHTML = getTierHTML(this.tier + 1);
 
-        if (this.tier === 0) {
-        this.tierReq.innerText = "Cost: 10 Multiplier"
-        } else if (this.tier === 1) {
-        this.tierReq.innerText = "Cost: 3 Rebirths"
-        } else if (this.tier === 2) {
-        this.tierReq.innerText = "Cost: 20 Rebirths"
-        } else if (this.tier === 3) {
-        this.tierReq.innerText = "Cost: 10 Ultra"
-        } else if (this.tier === 4) {
-        this.tierReq.innerText = "Cost: 2 Super"
-        } else if (this.tier === 5) {
-        this.tierReq.innerText = "Cost: 70 Ultra OR 5 Super"
-        } else if (this.tier === 6) {
-        this.tierReq.innerText = "Cost: 10 'Energy Boost' and 6 'Bigger and Better' fragment upgrades"
-        } else {
-        this.tierReq.innerText = "You have reached max tier!"
-        }
+        // Use the TIER_REQ_TEXT constant instead of a long if/else chain
+        this.tierReq.innerText = TIER_REQ_TEXT[this.tier] || 'You have reached max tier!';
         const energyIndexItem = document.querySelector('.index-item[data-stat="energy"]');
         const fragmentsIndexItem = document.querySelector('.index-item[data-stat="fragments"]');
         const superIndexItem = document.querySelector('.index-item[data-stat="super"]');
@@ -1705,6 +1657,10 @@ class StatGrindingGame {
         if (ultraIndexItem) {
             ultraIndexItem.style.display = (this.rebirthCount.gte(10) || this.ultra.gt(0)) ? 'block' : 'none';
         }
+        const hyperIndexItem = document.querySelector('.index-item[data-stat="hyper"]');
+        if (hyperIndexItem) {
+            hyperIndexItem.style.display = (this.super.gte(50) || this.hyper.gt(0)) ? 'block' : 'none';
+        }
         this.tierUpBtn.disabled = !this.canAffordTier();
         const activeIndexItem = document.querySelector('.index-item.active');
         if (activeIndexItem && activeIndexItem.dataset.stat) {
@@ -1716,6 +1672,32 @@ class StatGrindingGame {
     }
   }
   
+  // Helper: update a fragment upgrade button's display
+  updateFragUpgradeBtn(btn, index, name, maxLevel, desc, totalFn, minTier = 0, totalElId = null) {
+    if (!btn) return;
+    if (minTier > 0) {
+      btn.style.display = this.tier >= minTier ? 'inline-block' : 'none';
+      if (this.tier < minTier) return;
+    }
+    const purchased = this.fragmentUpgradesPurchased[index];
+    const cost = this.getFragmentUpgradeCost(index);
+    if (purchased >= maxLevel) {
+      btn.querySelector('.upg-title').innerText = `${name} (MAXED)`;
+      btn.querySelector('.upg-cost').innerText = 'Purchased';
+      btn.querySelector('.upg-desc').innerText = '';
+      btn.disabled = true;
+      btn.classList.add('bought');
+    } else {
+      btn.querySelector('.upg-title').innerText = `${name} (${purchased}/${maxLevel})`;
+      btn.querySelector('.upg-cost').innerText = `Cost: ${notationChooser(cost, 1)} Fragments`;
+      btn.querySelector('.upg-desc').innerText = desc;
+      btn.disabled = this.fragments.lt(cost);
+      btn.classList.remove('bought');
+    }
+    const totalEl = totalElId ? document.getElementById(totalElId) : btn.querySelector('.upg-total');
+    if (totalEl) totalEl.innerText = totalFn(purchased);
+  }
+
   // Select Index Item
   selectIndexItem(element) {
     // Update active class
@@ -1751,6 +1733,10 @@ class StatGrindingGame {
     if (statKey === 'fragments' && this.tier < 5) {
         isLocked = true;
         lockMessage = "You need Tier 5 to unlock it";
+    }
+    if (statKey === 'hyper' && this.super.lt(25) && this.hyper.eq(0)) {
+        isLocked = true;
+        lockMessage = "You need 25 Super to unlock it";
     }
     if (this.tier >= 3) {
       this.tierUpReset.innerText = ", energy and its Upgrades"
@@ -1840,6 +1826,15 @@ class StatGrindingGame {
                 <div style="color: #3b82f6">x${notationChooser(new Decimal(1).add(this.super), 0)} Rebirth Gain (+100% per Super)</div>
                 <div style="color: #facc15">x${notationChooser(new Decimal(1).add(this.super.mul(0.2)), 2)} Energy Production (+20% per Super)</div>
                 <div style="color: #ef4444">x${notationChooser(new Decimal(1.1).pow(this.super), 2)} Cost scaling for all previous stats (x1.1 per Super) [NERF]</div>
+            `
+        },
+        'hyper': {
+            title: 'Hyper',
+            id: '0008',
+            desc: 'The next prestige layer. Reset Cash through Super to gain a Hyper.<br>Cost: 25 Super at base. The highlight is that each Hyper boosts Super by a ton! Also, Hyper has no cost increases to prior stats.<br> Formula: 25 x (Hyper)^[1+log(Hyper+1)/2]',
+            color: '#383737ff',
+            getBoosts: () => `
+                <div style="color: #383737ff">x${notationChooser(new Decimal(1).add(this.hyper.mul(2)), 2)} <div style="color: #15803d">Super, <div style="color: #bf00ff">Ultra <div style="color: #ef4444">and Multiplier Gain (+200% per Super)</div>
             `
         },
         'fragments': {

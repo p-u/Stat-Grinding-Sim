@@ -42,7 +42,6 @@ class RuneSystem {
         let prevLim = 0;
         prob = prob * this.game.runeLuck
         for (const rune of this.runeData) {
-            console.log(rune.lim)
             if (prob > prevLim && prob <= rune.lim) {
                 this.game.runes[rune.id] = (this.game.runes[rune.id] || 0) + 1;
                 break;
