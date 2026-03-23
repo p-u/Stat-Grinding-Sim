@@ -108,7 +108,7 @@ class StatGrindingGame {
     this.fragmentSpawnTimer = 0;
     this.fragmentUpgradesPurchased = [0, 0, 0, 0, 0, 0, 0, 0];
     this.tokens = 0;
-    this.tokenUpgrades = [0, 0, 0, 0, 0, 0, 0];
+    this.tokenUpgrades = [0, 0, 0, 0, 0, 0, 0, 0];
     this.runes = {
       F01: 0,
       F02: 0,
@@ -223,7 +223,7 @@ class StatGrindingGame {
       document.getElementById(`eUp${i + 1}`)
     );
     
-    this.tUpgBtns = Array.from({ length: 7 }, (_, i) =>
+    this.tUpgBtns = Array.from({ length: 8 }, (_, i) =>
       document.getElementById(`tUpg${i}`)
     );
     
@@ -356,6 +356,7 @@ class StatGrindingGame {
       'floating': 'FloatingCities.mp3',
       'cipher': 'Cipher.mp3',
       'omega': 'Omega.mp3',
+      'heavenhell': 'HeavenHell.mp3',
       'signal': 'signaltonoise.mp3'
     };
     
@@ -713,23 +714,25 @@ class StatGrindingGame {
   // Token Upgrades
   getTokenUpgradeCost(index) {
     const lvl = this.tokenUpgrades[index];
-    if (lvl >= 10) return Infinity;
+    if (lvl >= 100) return Infinity;
 
     switch (index) {
       case 0: // Cash
-        return Math.floor((7 + 2 * lvl) * Math.pow(1.1, lvl));
+        return Math.floor((5 + 2 * lvl) * Math.pow(1.125, lvl));
       case 1: // Multi
-        return Math.floor((10 + 2 * lvl) * Math.pow(1.1, lvl));
+        return Math.floor((8 + 2 * lvl) * Math.pow(1.135, lvl));
       case 2: // Rebirth
-        return 8 + 4 * lvl;
+        return Math.floor(8 * Math.pow(1.16, lvl));
       case 3: // Ultra
-        return Math.floor(11 * Math.pow(1.2, lvl));
+        return Math.floor((10 + 0.5 * lvl) * Math.pow(1.19, lvl));
       case 4: // Super
-        return Math.floor(15 * Math.pow(1.2, lvl));
+        return Math.floor((12 + 1.8 * lvl) * Math.pow(1.2, lvl));
       case 5: // Energy
-        return Math.floor((12 + 1 * lvl) * Math.pow(1.15, lvl));
+        return Math.floor((12 + 2 * lvl) * Math.pow(1.15, lvl));
       case 6: // Frags
-        return Math.floor((18 + 3 * lvl) * Math.pow(1.15, lvl));
+        return Math.floor((15 + 5 * lvl) * Math.pow(1.18, lvl));
+      case 7: // Hyper
+        return Math.floor((10 + 1 * lvl) * Math.pow(1.1, lvl));
       default:
         return Infinity;
     }
@@ -747,6 +750,8 @@ class StatGrindingGame {
       case 5: // Energy
       case 6: // Frags
         return Decimal.pow(1.1, lvl);
+      case 7: // Hyper
+        return Decimal.pow(1.05, lvl);
       default:
         return new Decimal(1);
     }
@@ -754,7 +759,7 @@ class StatGrindingGame {
 
   buyTokenUpgrade(index) {
     const cost = this.getTokenUpgradeCost(index);
-    if (this.tokens >= cost && this.tokenUpgrades[index] < 10) {
+    if (this.tokens >= cost && this.tokenUpgrades[index] < 100) {
       this.tokens -= cost;
       this.tokenUpgrades[index]++;
       this.saveToStorage();
@@ -829,7 +834,7 @@ class StatGrindingGame {
   applySaveData(data) {
     const ENERGY_UPGRADE_COUNT = 12;
     const FRAGMENT_UPGRADE_COUNT = 8;
-    const TOKEN_UPGRADE_COUNT = 7;
+    const TOKEN_UPGRADE_COUNT = 8;
     this.cash = new Decimal(data.cash || 0);
     this.multiplier = new Decimal(data.multiplier || 0);
     this.rebirthCount = new Decimal(data.rebirthCount || 0);
@@ -999,7 +1004,7 @@ class StatGrindingGame {
       this.achievements = { ...DEFAULT_ACHIEVEMENTS };
       this.energyUpgrades = new Array(12).fill(false);
       this.fragmentUpgradesPurchased = new Array(8).fill(0);
-      this.tokenUpgrades = new Array(7).fill(0);
+      this.tokenUpgrades = new Array(8).fill(0);
 
       this.updateBonuses();
       localStorage.removeItem('statGrindingSave');
@@ -1207,8 +1212,8 @@ class StatGrindingGame {
   }
 
   getHyperCost() {
-    // Placeholder cost — player needs 999 Super to Hyper
-    let cost = new Decimal(25).mul(this.hyper.pow((this.hyper.add(1)).log10().div(2).add(1)))
+    // Placeholder cost — player needs 25 Super to Hyper
+    let cost = new Decimal(25).mul(this.hyper.add(1).pow((this.hyper.add(1)).log10().div(2).add(1)))
     return cost;
   }
 
@@ -1244,7 +1249,7 @@ class StatGrindingGame {
       this.multiplier = new Decimal(0);
       this.cash = new Decimal(0);
 
-      let gain = new Decimal(1); // Base gain of 1 Hyper
+      let gain = new Decimal(1).mul(this.getTokenUpgradeBonus(7)); // Base gain of 1 Hyper
       this.hyper = this.hyper.add(gain);
 
       this.saveToStorage();
@@ -1273,7 +1278,7 @@ class StatGrindingGame {
         const nextRebirthCost = this.getRebirthCost();
         this.rebirthDisplay.innerHTML = `Rebirth: ${notationChooser(this.rebirthCount, 0)} <span style="color: #60a5fa;">(next at ${notationChooser(nextRebirthCost, 1)} multiplier)</span>`;
         
-        if (this.ultra > 0 || this.super > 0 || this.rebirthCount > 0) {
+        if (this.ultra.gt(0) || this.super.gt(0) || this.rebirthCount.gt(0)) {
           this.ultraDisplay.style.display = 'block';
           const nextUltraCost = this.getUltraCost();
           this.ultraDisplay.innerHTML = `Ultra: ${notationChooser(this.ultra, 0)} <span style="color: #bf00ff;">(next at ${notationChooser(nextUltraCost, 0)} Rebirths)</span>`;
@@ -1282,7 +1287,7 @@ class StatGrindingGame {
         }
         
         // Super Display
-        if (this.ultra > 0 || this.super > 0) {
+        if (this.ultra.gt(0) || this.super.gt(0)) {
             this.superDisplay.style.display = 'block';
             const nextSuperCost = this.getSuperCost();
             this.superDisplay.innerHTML = `Super: ${notationChooser(this.super, 0)} <span style="color: #15803d;">(next at ${notationChooser(nextSuperCost, 0)} Ultra)</span>`;
@@ -1291,7 +1296,7 @@ class StatGrindingGame {
         }
 
         // Hyper Display
-        if (this.super > 0 || this.hyper > 0) {
+        if (this.super.gt(0) || this.hyper.gt(0)) {
             this.hyperDisplay.style.display = 'block';
             const nextHyperCost = this.getHyperCost();
             this.hyperDisplay.innerHTML = `<span style="color: #383737ff;"> Hyper: ${notationChooser(this.hyper, 0)} (next at ${notationChooser(nextHyperCost, 0)} Super)</span>`;
@@ -1299,6 +1304,39 @@ class StatGrindingGame {
             this.hyperDisplay.style.display = 'none';
         }
         
+        // Token Buttons unlock
+        let tier = 0
+        if (this.rebirthCount.gt(0)) tier = 2
+        if (this.ultra.gt(0)) tier = 3
+        if (this.super.gt(0)) tier = 4
+        if (this.hyper.gt(0)) tier = 5
+        if (tier >= 2) {
+          document.getElementById('tUpg3').style.display = 'block';
+        } else {
+          document.getElementById('tUpg3').style.display = 'none';
+        }
+        if (tier >= 3) {
+          document.getElementById('tUpg4').style.display = 'block';
+        } else {
+          document.getElementById('tUpg4').style.display = 'none';
+        }
+        if (tier >= 4) {
+          document.getElementById('tUpg7').style.display = 'block';
+        } else {
+          document.getElementById('tUpg7').style.display = 'none';
+        }
+        if (this.tier >= 3) {
+          document.getElementById('tUpg5').style.display = 'block';
+        } else {
+          document.getElementById('tUpg5').style.display = 'none';
+        }
+        if (this.tier >= 5) {
+          document.getElementById('tUpg6').style.display = 'block';
+        } else {
+          document.getElementById('tUpg6').style.display = 'none';
+        }
+
+        if (this.rebirthCount)
         // Energy Display
         if (this.tier >= 3) {
             const energyProd = this.getEnergyProduction();
@@ -1475,23 +1513,35 @@ class StatGrindingGame {
                 const costEl = btn.querySelector('.upg-cost');
                 const descEl = btn.querySelector('.upg-desc');
                 
-                if (lvl >= 10) {
+                if (lvl >= 100) {
                   btn.classList.add('bought');
                   btn.disabled = true;
                   if (costEl) costEl.innerText = "MAXED";
                 } else {
                   btn.classList.remove('bought');
                   btn.disabled = this.tokens < cost;
-                  if (costEl) costEl.innerText = `Cost: ${cost} Tokens`;
+                  if (costEl) costEl.innerText = `Cost: ${notationChooser(cost)} Tokens`;
                 }
                 
                 if (descEl) {
-                  const names = ["Cash Gain", "Multiplier Gain", "Rebirth Gain", "Ultra Gain", "Super Gain", "Energy Gain", "Fragment Gain"];
-                  const mult = (i === 0 || i === 1) ? "1.2" : "1.1";
-                  descEl.innerText = `x${mult} ${names[i]} (${lvl}/10)`;
+                  const names = ["Cash Gain", "Multiplier Gain", "Rebirth Gain", "Ultra Gain", "Super Gain", "Energy Gain", "Fragment Gain", "Hyper Gain"];
+                  const mult = (i === 0 || i === 1) ? "1.2" : (i === 7) ? "1.05" : "1.1";
+                  descEl.innerText = `x${mult} ${names[i]} (${lvl}/100)`;
+                }
+                
+                const totalEl = btn.querySelector('.upg-total');
+                if (totalEl) {
+                  totalEl.innerText = `Total Boost: x${notationChooser(this.getTokenUpgradeBonus(i), 2)}`;
                 }
               });
             }
+        }
+
+        // Stat Index: Rune Index disappearing when Tier<7
+        if (this.tier < 7) {
+          document.getElementById('runeIndexTab').style.display = 'none';
+        } else {
+          document.getElementById('runeIndexTab').style.display = 'block';
         }
         
         // Update Achievement Cards
@@ -1528,6 +1578,18 @@ class StatGrindingGame {
         this.optTtlCash.innerText = "Total Cash: $" + notationChooser(this.ttlcash);
         this.optRuneSpeed.innerText = "You open one rune every " + 1/this.runeSpeed + " seconds";
         this.optTotalRunes.innerText = "Total Runes Opened: " + this.totalRunesOpened;
+
+        if (this.tier < 7) {
+          this.optRuneBulk.style.display = 'none';
+          this.optRuneLuck.style.display = 'none';
+          this.optRuneSpeed.style.display = 'none';
+          this.optTotalRunes.style.display = 'none';
+        } else {
+          this.optRuneBulk.style.display = 'block';
+          this.optRuneLuck.style.display = 'block';
+          this.optRuneSpeed.style.display = 'block';
+          this.optTotalRunes.style.display = 'block';
+        }
         
         // Tier display
         this.tierDisplay.innerText = this.tier;
@@ -1642,6 +1704,7 @@ class StatGrindingGame {
         const superIndexItem = document.querySelector('.index-item[data-stat="super"]');
         const rebirthIndexItem = document.querySelector('.index-item[data-stat="rebirth"]');
         const ultraIndexItem = document.querySelector('.index-item[data-stat="ultra"]');
+        const hyperIndexItem = document.querySelector('.index-item[data-stat="hyper"]');
         if (energyIndexItem) {
             energyIndexItem.style.display = this.tier >= 3 ? 'block' : 'none';
         }
@@ -1657,7 +1720,6 @@ class StatGrindingGame {
         if (ultraIndexItem) {
             ultraIndexItem.style.display = (this.rebirthCount.gte(10) || this.ultra.gt(0)) ? 'block' : 'none';
         }
-        const hyperIndexItem = document.querySelector('.index-item[data-stat="hyper"]');
         if (hyperIndexItem) {
             hyperIndexItem.style.display = (this.super.gte(50) || this.hyper.gt(0)) ? 'block' : 'none';
         }
@@ -1831,10 +1893,10 @@ class StatGrindingGame {
         'hyper': {
             title: 'Hyper',
             id: '0008',
-            desc: 'The next prestige layer. Reset Cash through Super to gain a Hyper.<br>Cost: 25 Super at base. The highlight is that each Hyper boosts Super by a ton! Also, Hyper has no cost increases to prior stats.<br> Formula: 25 x (Hyper)^[1+log(Hyper+1)/2]',
+            desc: 'The next prestige layer. Reset Cash through Super to gain a Hyper.<br>Cost: 25 Super at base. The highlight is that each Hyper boosts Super by a ton! Also, Hyper has no cost increases to prior stats.<br> Formula: 25 x (Hyper+1)^[1+log(Hyper+1)/2]',
             color: '#383737ff',
             getBoosts: () => `
-                <div style="color: #383737ff">x${notationChooser(new Decimal(1).add(this.hyper.mul(2)), 2)} <div style="color: #15803d">Super, <div style="color: #bf00ff">Ultra <div style="color: #ef4444">and Multiplier Gain (+200% per Super)</div>
+                <div style="color: #383737ff">x${notationChooser(new Decimal(1).add(this.hyper.mul(2)), 2)} <div style="color: #15803d">Super, <div style="color: #bf00ff">Ultra <div style="color: #ef4444">and Multiplier Gain (+200% per Hyper)</div>
             `
         },
         'fragments': {
@@ -1850,7 +1912,7 @@ class StatGrindingGame {
                 let boostText = `<div style="color: #facc15">x${notationChooser(new Decimal(1.1).pow(this.fragmentUpgradesPurchased[0]), 2)} Energy Production (Upgrades)</div>`;
                 
                 if (this.fragments.gte(25)) {
-                    boostText += `<div style="color: #bf00ff">x${notationChooser(fragmentBoost, 2)} Ultra Multiplier (1.07^log2(Fragments/50))</div>`;
+                    boostText += `<div style="color: #bf00ff; white-space: nowrap">x${notationChooser(fragmentBoost, 2)} Ultra Multiplier (1.07^log2(Fragments/50))</div>`;
                 } else {
                     boostText += `<div style="color: #666">Ultra Multiplier (Requires 50 Fragments)</div>`;
                 }
