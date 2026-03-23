@@ -1896,7 +1896,7 @@ class StatGrindingGame {
             desc: 'The next prestige layer. Reset Cash through Super to gain a Hyper.<br>Cost: 25 Super at base. The highlight is that each Hyper boosts Super by a ton! Also, Hyper has no cost increases to prior stats.<br> Formula: 25 x (Hyper+1)^[1+log(Hyper+1)/2]',
             color: '#383737ff',
             getBoosts: () => `
-                <div style="color: #383737ff">x${notationChooser(new Decimal(1).add(this.hyper.mul(2)), 2)} <div style="color: #15803d">Super, <div style="color: #bf00ff">Ultra <div style="color: #ef4444">and Multiplier Gain (+200% per Hyper)</div>
+                <div style="color: #383737ff">x${notationChooser(new Decimal(1).add(this.hyper.mul(2)), 2)} <span style="color: #15803d">Super,</span> <span style="color: #bf00ff">Ultra</span> <span style="color: #ef4444">and Multiplier Gain (+200% per Hyper)</span></div>
             `
         },
         'fragments': {
